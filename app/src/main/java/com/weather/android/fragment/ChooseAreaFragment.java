@@ -1,6 +1,7 @@
 package com.weather.android.fragment;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -10,14 +11,18 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.weather.android.MainActivity;
 import com.weather.android.R;
+import com.weather.android.WeatherActivity;
 import com.weather.android.db.City;
 import com.weather.android.db.County;
 import com.weather.android.db.Province;
+import com.weather.android.gson.Weather;
 import com.weather.android.util.HttpUtil;
 import com.weather.android.util.Utility;
 
@@ -41,20 +46,19 @@ public class ChooseAreaFragment extends Fragment {
     private static final int LEVEL_CITY = 1;
     private static final int LEVEL_COUNTY = 2;
 
+    private LinearLayout chooseArea;
     private ProgressDialog progressDialog;
     private TextView titleText;
     private Button backButton;
     private ListView listView;
     private ArrayAdapter<String> adapter;
-    /**
-     * 省、市、县级列表
-     */
+
+    //省、市、县级列表
     private List<Province> provinceList;
     private List<City> cityList;
     private List<County> countyList;
-    /**
-     * 选择的省、市、项
-     */
+
+    //选择的省、市、项
     private Province selectProvince;
     private City selectCity;
     private County selectCounty;
@@ -66,6 +70,7 @@ public class ChooseAreaFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_choose_area, container, false);
+        chooseArea = (LinearLayout) view.findViewById(R.id.choose_area_layout);
         titleText = (TextView) view.findViewById(R.id.title_text);
         backButton = (Button) view.findViewById(R.id.back_button);
         listView = (ListView) view.findViewById(R.id.list_view);
@@ -87,7 +92,11 @@ public class ChooseAreaFragment extends Fragment {
                     selectCity = cityList.get(position);
                     queryFromCounty();
                 } else if (currentLevel == LEVEL_COUNTY) {
-
+                    Intent intent = new Intent(getContext(), WeatherActivity.class);
+                    String weatherId = countyList.get(position).getWeatherId();
+                    intent.putExtra("weather_id", weatherId);
+                    startActivity(intent);
+                    getActivity().finish();
                 }
             }
         });
@@ -171,6 +180,7 @@ public class ChooseAreaFragment extends Fragment {
      * 从服务端获取数据
      */
     private void queryFromServer(String address, final String type) {
+        chooseArea.setVisibility(View.INVISIBLE);
         showProgressDialog();
         HttpUtil.sendOKHttpRequest(address, new Callback() {
                     @Override
@@ -179,6 +189,7 @@ public class ChooseAreaFragment extends Fragment {
                             @Override
                             public void run() {
                                 Toast.makeText(getContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                                closeProgressDialog();
                             }
                         });
                     }
@@ -197,6 +208,7 @@ public class ChooseAreaFragment extends Fragment {
                             getActivity().runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
+                                    chooseArea.setVisibility(View.VISIBLE);
                                     closeProgressDialog();
                                     switch (type) {
                                         case "province":
