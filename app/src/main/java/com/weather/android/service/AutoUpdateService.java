@@ -9,7 +9,6 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 
-import com.bumptech.glide.Glide;
 import com.weather.android.gson.Weather;
 import com.weather.android.util.HttpUtil;
 import com.weather.android.util.Utility;

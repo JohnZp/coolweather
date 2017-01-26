@@ -23,7 +23,6 @@ import com.weather.android.WeatherActivity;
 import com.weather.android.db.City;
 import com.weather.android.db.County;
 import com.weather.android.db.Province;
-import com.weather.android.gson.Weather;
 import com.weather.android.util.HttpUtil;
 import com.weather.android.util.Utility;
 
