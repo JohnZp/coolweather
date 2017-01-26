@@ -1,14 +1,20 @@
 package com.weather.android.fragment;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -19,6 +25,7 @@ import com.bumptech.glide.Glide;
 import com.weather.android.R;
 import com.weather.android.gson.DailyForecast;
 import com.weather.android.gson.Weather;
+import com.weather.android.service.AutoUpdateService;
 import com.weather.android.util.HttpUtil;
 import com.weather.android.util.Utility;
 
@@ -34,6 +41,9 @@ import okhttp3.Response;
 
 public class WeatherFragment extends Fragment {
 
+    public DrawerLayout drawerLayout;
+    public SwipeRefreshLayout swipeRefresh;
+    private Button nvButton;
     private ImageView bingPicture;
     private ScrollView weatherLayout;
     private TextView titleCity;
@@ -46,6 +56,8 @@ public class WeatherFragment extends Fragment {
     private TextView comfortText;
     private TextView carWashText;
     private TextView sportText;
+
+    private String mWeatherId;
 
     @Nullable
     @Override
@@ -63,6 +75,9 @@ public class WeatherFragment extends Fragment {
         comfortText = (TextView) view.findViewById(R.id.comfort_text);
         carWashText = (TextView) view.findViewById(R.id.car_wash_text);
         sportText = (TextView) view.findViewById(R.id.sport_text);
+        drawerLayout = (DrawerLayout) view.findViewById(R.id.drawer_layout);
+        nvButton = (Button) view.findViewById(R.id.nv_button);
+        swipeRefresh = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
         return view;
     }
 
@@ -74,13 +89,28 @@ public class WeatherFragment extends Fragment {
         if (weatherString != null) {
             //有缓存直接解析天气数据
             Weather weather = Utility.handleWeatherResponse(weatherString);
+            mWeatherId = weather.basic.weatherId;
             showWeatherInfo(weather);
         } else {
             //无缓存时去服务器中请求数据
+            mWeatherId = getActivity().getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.GONE);
-            String weatherId = getActivity().getIntent().getStringExtra("weather_id");
-            requestWeather(weatherId);
+            requestWeather(mWeatherId);
         }
+
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(mWeatherId);
+            }
+        });
+
+        nvButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
         String bingPic = sp.getString("bing_pic", null);
         if (bingPic != null) {
             Glide.with(getActivity()).load(bingPic).into(bingPicture);
@@ -89,7 +119,7 @@ public class WeatherFragment extends Fragment {
         }
     }
 
-    private void requestWeather(String weatherId) {
+    public void requestWeather(final String weatherId) {
         String address = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=149c347fd5d445b29179a8854fde8d47";
         HttpUtil.sendOKHttpRequest(address, new Callback() {
             @Override
@@ -98,6 +128,7 @@ public class WeatherFragment extends Fragment {
                     @Override
                     public void run() {
                         Toast.makeText(getContext(), "获取天气信息失败", Toast.LENGTH_SHORT).show();
+                        swipeRefresh.setRefreshing(false);
                     }
                 });
             }
@@ -114,10 +145,12 @@ public class WeatherFragment extends Fragment {
                             SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getContext()).edit();
                             editor.putString("weather", responseText);
                             editor.apply();
+                            mWeatherId = weather.basic.weatherId;
                             showWeatherInfo(weather);
                         } else {
                             Toast.makeText(getContext(), "获取天气信息失败", Toast.LENGTH_SHORT).show();
                         }
+                        swipeRefresh.setRefreshing(false);
                     }
                 });
             }
@@ -145,6 +178,8 @@ public class WeatherFragment extends Fragment {
         carWashText.setText("洗车指数：" + weather.suggestion.carWash.info);
         sportText.setText("运动建议：" + weather.suggestion.sport.info);
         weatherLayout.setVisibility(View.VISIBLE);
+        Intent intent = new Intent(getActivity(), AutoUpdateService.class);
+        getActivity().startService(intent);
     }
 
     /**
